@@ -1,0 +1,36 @@
+# MiniSkidi V3 Bluepad32 Changelog
+
+---
+
+## Version 4.1 - Initial PWM Drive
+
+- Added proportional PWM drive for DRV8833 motor drivers.
+- Added Config.h for centralized configuration.
+- Added Controller.ino.
+- Refactored Drive.ino.
+- Added adjustable:
+  - MIN_PWM
+  - MAX_PWM
+  - TURN_GAIN
+- PS4 controller fully operational.
+- Arm motor operational.
+- Bluetooth disconnect stops all motors.
+- Known Issue:
+  - Drive steering requires additional low-speed tuning.
+
+---
+
+## Version 4.0 - Project Refactor
+
+- Bluepad32 integration completed.
+- PS4 controller support.
+- Modular project structure.
+- Arm motor integrated.
+- Drive motor control cleaned up.
+
+---
+
+## Version 3.x
+
+- Initial Bluepad32 conversion from ProfessorBoots MiniSkidi V3.
+- Tank drive operational.
