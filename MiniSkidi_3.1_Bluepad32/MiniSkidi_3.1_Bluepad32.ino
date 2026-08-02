@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <Bluepad32.h>
+#include "Config.h"
 
 // Functions located in Drive.ino
 void setupMotors();

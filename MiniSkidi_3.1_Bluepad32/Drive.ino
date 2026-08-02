@@ -1,23 +1,15 @@
-#define RIGHT_MOTOR 1
-#define LEFT_MOTOR  0
-#define ARM_MOTOR   2
-
-#define FORWARD   1
-#define BACKWARD -1
-#define STOP       0
-
 struct MOTOR_PINS {
   int pinIN1;
   int pinIN2;
 };
 
 MOTOR_PINS motorPins[] = {
-  {25, 26},  // Right drive motor
-  {33, 32},  // Left drive motor
-  {21, 19}   // Arm motor
+  {LEFT_IN1,  LEFT_IN2},   // Left drive motor
+  {RIGHT_IN1, RIGHT_IN2},  // Right drive motor
+  {ARM_IN1,   ARM_IN2}     // Arm motor
 };
 
-const int NUM_MOTORS =
+constexpr int NUM_MOTORS =
   sizeof(motorPins) / sizeof(motorPins[0]);
 
 void rotateMotor(int motorNumber, int motorDirection) {
