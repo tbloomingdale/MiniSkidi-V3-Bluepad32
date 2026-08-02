@@ -1,4 +1,110 @@
-* Video at [youtube.com/watch?v=dDfVdGGrf1k](https://www.youtube.com/watch?v=dDfVdGGrf1k)
-* Kits at [professorboots.com/products/rc-skidsteer-kit-v3-0](https://professorboots.com/products/rc-skidsteer-kit-v3-0?utm_medium=product_shelf)
-* Tutorial at [professorboots.com/a/members](https://professorboots.com/a/members) (If self sourcing the parts you'll need to pay for a membershp to unlock that specific course)
-* [3D Printed RC SkidSteer V3.0 printables](https://www.printables.com/de/model/721244-3d-printed-rc-skidsteer-v30)
+\# MiniSkidi V3 Bluepad32
+
+
+
+A modernized version of the ProfessorBoots MiniSkidi V3 project using an ESP32 and Bluepad32 for PlayStation 4 controller support.
+
+
+
+\## Project Goals
+
+
+
+\- Remove the original PS3 controller dependency.
+
+\- Replace it with Bluepad32.
+
+\- Improve the code structure.
+
+\- Add smooth PWM motor control.
+
+\- Prepare for bucket, claw, lights, and future features.
+
+
+
+\## Hardware
+
+
+
+\- ESP32 DOIT DEVKIT V1
+
+\- Bluepad32
+
+\- DRV8833 Motor Drivers
+
+\- PlayStation 4 Controller
+
+\- MiniSkidi V3 Chassis
+
+
+
+\## Current Features
+
+
+
+\- PS4 controller support
+
+\- Bluetooth connection
+
+\- Variable-speed PWM drive
+
+\- Left stick controls driving
+
+\- Right stick controls arm
+
+\- Automatic motor stop on controller disconnect
+
+\- Modular code structure
+
+
+
+\## Project Structure
+
+
+
+```
+
+Config.h
+
+Controller.ino
+
+Drive.ino
+
+Servo.ino
+
+MiniSkidi\_3.1\_Bluepad32.ino
+
+```
+
+
+
+\## Roadmap
+
+
+
+\- Improve low-speed drive tuning
+
+\- Bucket servo
+
+\- Claw servo
+
+\- Lights
+
+\- Additional controller features
+
+
+
+\## Credits
+
+
+
+Original MiniSkidi V3 by ProfessorBoots.
+
+
+
+Bluepad32 by Ricardo Quesada.
+
+
+
+This repository contains my personal modernization and controller conversion.
+
