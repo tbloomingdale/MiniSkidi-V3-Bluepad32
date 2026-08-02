@@ -2,6 +2,46 @@
 
 
 
+\## Version 4.2 Build 2
+
+
+
+\### Added
+
+
+
+\- Drive Engine 2.0 prototype
+
+\- Radial joystick processing
+
+\- Continuous steering mixer
+
+\- PS4 controller LED diagnostics
+
+
+
+\### Improved
+
+
+
+\- Forward steering
+
+\- Reverse steering
+
+\- General drive feel
+
+
+
+\### Known Issues
+
+
+
+\- Arc turns become pivots too early.
+
+\- Inside track reaches zero before full steering input.
+
+\- Further steering refinement required.
+
 \---
 
 

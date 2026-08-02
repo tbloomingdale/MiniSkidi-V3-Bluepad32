@@ -2,7 +2,8 @@
 #define CONFIG_H
 
 // ======================================================
-// MiniSkidi V4 Configuration
+// MiniSkidi V4.2 - Drive Engine 2.0
+// "Operate like a real skid steer, not an RC toy."
 // ======================================================
 
 // Motor numbers
@@ -25,24 +26,26 @@ constexpr int LEFT_IN2 = 32;
 constexpr int ARM_IN1 = 21;
 constexpr int ARM_IN2 = 19;
 
-// Controller tuning
+// Controller center dead zone
 constexpr int DEADZONE = 100;
 
-// Drive PWM tuning
+// Track PWM settings
+constexpr int MIN_PWM = 95;
 constexpr int MAX_PWM = 255;
 
-// Lowest output that reliably starts a track moving.
-// Lower this later if the tracks start too abruptly.
-constexpr int MIN_PWM = 95;
+// Commands smaller than this intentionally stop the track.
+// This avoids commanding a motor inside its unusable stall range.
+constexpr float TRACK_ZERO_BAND = 0.08f;
 
-// Steering sensitivity
-constexpr float TURN_GAIN = 1.0f;
+// Higher values make ordinary steering gentler.
+// Suggested tuning range: 1.2 to 2.2
+constexpr float TURN_CURVE = 1.60f;
 
 // ESP32 PWM settings
-constexpr int PWM_FREQUENCY = 20000;
+constexpr int PWM_FREQUENCY  = 20000;
 constexpr int PWM_RESOLUTION = 8;
 
-// PWM channels
+// Drive PWM channels
 constexpr int LEFT_IN1_CHANNEL  = 0;
 constexpr int LEFT_IN2_CHANNEL  = 1;
 constexpr int RIGHT_IN1_CHANNEL = 2;
