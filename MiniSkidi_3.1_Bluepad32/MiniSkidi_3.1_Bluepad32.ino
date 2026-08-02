@@ -8,6 +8,8 @@ void moveTank(int leftCommand, int rightCommand);
 void controlArm(int armValue, int deadzone);
 void stopArm();
 void processController();
+void setupServos();
+void testBucketServo();
 
 ControllerPtr myController = nullptr;
 
@@ -35,6 +37,7 @@ void setup() {
   Serial.begin(115200);
 
   setupMotors();
+  // setupServos();
 
   BP32.setup(
     &onConnectedController,
