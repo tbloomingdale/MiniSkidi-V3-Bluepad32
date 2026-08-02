@@ -1,47 +1,72 @@
+int axisToPWM(int axisValue)
+{
+  if (abs(axisValue) < DEADZONE) {
+    return 0;
+  }
+
+  int magnitude = abs(axisValue);
+
+  magnitude = map(
+    magnitude,
+    DEADZONE,
+    512,
+    MIN_PWM,
+    MAX_PWM
+  );
+
+  magnitude = constrain(magnitude, MIN_PWM, MAX_PWM);
+
+  return axisValue > 0 ? magnitude : -magnitude;
+}
+
 void processController()
 {
-    int drive = -myController->axisY();
-    int turn  = myController->axisX();
+  // Left stick:
+  // Up/down = forward/reverse
+  // Left/right = steering
+  int driveAxis = -myController->axisY();
+  int turnAxis  =  myController->axisX();
 
-    if (abs(drive) < DEADZONE)
-        drive = 0;
+  int drivePWM = axisToPWM(driveAxis);
+  int turnPWM  = axisToPWM(turnAxis);
 
-    if (abs(turn) < DEADZONE)
-        turn = 0;
+  turnPWM = static_cast<int>(turnPWM * TURN_GAIN);
 
-    int leftMix  = drive + turn;
-    int rightMix = drive - turn;
+  int leftSpeed  = drivePWM + turnPWM;
+  int rightSpeed = drivePWM - turnPWM;
 
-    int leftCommand = 0;
-    int rightCommand = 0;
+  // Normalize the mixed values so neither exceeds MAX_PWM.
+  int largestMagnitude = max(abs(leftSpeed), abs(rightSpeed));
 
-    if (leftMix > DEADZONE)
-        leftCommand = 1;
-    else if (leftMix < -DEADZONE)
-        leftCommand = -1;
+  if (largestMagnitude > MAX_PWM) {
+    leftSpeed =
+      static_cast<long>(leftSpeed) * MAX_PWM /
+      largestMagnitude;
 
-    if (rightMix > DEADZONE)
-        rightCommand = 1;
-    else if (rightMix < -DEADZONE)
-        rightCommand = -1;
+    rightSpeed =
+      static_cast<long>(rightSpeed) * MAX_PWM /
+      largestMagnitude;
+  }
 
-    moveTank(leftCommand, rightCommand);
+  moveTank(leftSpeed, rightSpeed);
 
-    int arm = myController->axisRY();
+  // Right stick controls the arm.
+  int arm = myController->axisRY();
 
-    if (abs(arm) < DEADZONE)
-        arm = 0;
+  if (abs(arm) < DEADZONE) {
+    arm = 0;
+  }
 
-    controlArm(arm, DEADZONE);
+  controlArm(arm, DEADZONE);
 
-    Serial.printf(
-        "Drive:%5d Turn:%5d Left:%2d Right:%2d Arm:%5d\n",
-        drive,
-        turn,
-        leftCommand,
-        rightCommand,
-        arm
-    );
+  Serial.printf(
+    "Drive:%4d Turn:%4d LeftPWM:%4d RightPWM:%4d Arm:%4d\n",
+    drivePWM,
+    turnPWM,
+    leftSpeed,
+    rightSpeed,
+    arm
+  );
 
-    delay(20);
+  delay(20);
 }
