@@ -1,10 +1,10 @@
 // ======================================================
-// MiniSkidi Drive Engine 2.0
+// MiniSkidi Drive Engine 3.0
 // ======================================================
 
 
-// Reads the left stick as one circular control instead of
-// treating X and Y as two unrelated axes.
+// Reads the complete left-stick position using one circular
+// dead zone.
 //
 // Outputs:
 //   throttle       -1.0 to +1.0
@@ -28,11 +28,9 @@ void readDriveStick(
     return;
   }
 
-  // Direction of the stick.
   float directionX = rawX / rawMagnitude;
   float directionY = rawY / rawMagnitude;
 
-  // Remove the radial dead zone and rescale the remaining travel.
   float limitedMagnitude = min(rawMagnitude, 512.0f);
 
   stickMagnitude =
@@ -47,58 +45,108 @@ void readDriveStick(
 }
 
 
-// Converts a normalized track command into usable PWM.
+// Produces the inside-track speed factor.
 //
-// Small values deliberately become zero.
-// Values outside that stop band begin at MIN_PWM, avoiding
-// the weak motor-stall region.
-int trackCommandToPWM(float command)
+// At straight ahead:
+//   factor = +1.0
+//
+// Through normal arc turns:
+//   factor gradually decreases, but stays above MIN_ARC_SPEED.
+//
+// Near full sideways:
+//   factor passes through zero and continues toward -1.0.
+//
+// This prevents ordinary diagonal stick positions from
+// stopping the inside track.
+float calculateInsideTrackFactor(float turnRatio)
 {
-  command = constrain(command, -1.0f, 1.0f);
+  turnRatio = constrain(turnRatio, 0.0f, 1.0f);
 
-  float magnitude = abs(command);
+  // Normal arc-turn region.
+  if (turnRatio <= ARC_END) {
+    float arcPosition = turnRatio / ARC_END;
 
-  if (magnitude <= TRACK_ZERO_BAND) {
+    arcPosition =
+      constrain(arcPosition, 0.0f, 1.0f);
+
+    float shapedPosition =
+      powf(arcPosition, TURN_RESPONSE);
+
+    return
+      1.0f -
+      ((1.0f - MIN_ARC_SPEED) * shapedPosition);
+  }
+
+  // Final transition from tight arc into pivot.
+  float pivotPosition =
+    (turnRatio - ARC_END) /
+    (1.0f - ARC_END);
+
+  pivotPosition =
+    constrain(pivotPosition, 0.0f, 1.0f);
+
+  // Smoothstep removes an abrupt change at ARC_END.
+  float smoothPivot =
+    pivotPosition *
+    pivotPosition *
+    (3.0f - (2.0f * pivotPosition));
+
+  return
+    MIN_ARC_SPEED +
+    ((-1.0f - MIN_ARC_SPEED) * smoothPivot);
+}
+
+
+// Converts a normalized track speed into signed PWM.
+//
+// Any usable nonzero track command begins at TRACK_MIN_PWM,
+// avoiding the motor's weak stall region.
+int trackSpeedToPWM(float trackSpeed)
+{
+  trackSpeed =
+    constrain(trackSpeed, -1.0f, 1.0f);
+
+  float magnitude = abs(trackSpeed);
+
+  if (magnitude <= TRACK_STOP_BAND) {
     return 0;
   }
 
   float usableMagnitude =
-    (magnitude - TRACK_ZERO_BAND) /
-    (1.0f - TRACK_ZERO_BAND);
+    (magnitude - TRACK_STOP_BAND) /
+    (1.0f - TRACK_STOP_BAND);
 
   usableMagnitude =
     constrain(usableMagnitude, 0.0f, 1.0f);
 
   int pwm =
-    MIN_PWM +
+    TRACK_MIN_PWM +
     static_cast<int>(
       usableMagnitude *
-      static_cast<float>(MAX_PWM - MIN_PWM)
+      static_cast<float>(TRACK_MAX_PWM - TRACK_MIN_PWM)
     );
 
-  pwm = constrain(pwm, MIN_PWM, MAX_PWM);
+  pwm =
+    constrain(pwm, TRACK_MIN_PWM, TRACK_MAX_PWM);
 
-  return command > 0.0f ? pwm : -pwm;
+  return trackSpeed > 0.0f ? pwm : -pwm;
 }
 
 
-// Continuous skid-steer mixer.
+// Outside-track-priority skid-steer mixer.
 //
-// Straight:
-//   Both tracks run together.
+// Small steering:
+//   Both tracks continue moving.
 //
 // Increasing steering:
-//   Outside track holds speed.
-//   Inside track progressively slows.
+//   Inside track slows while outside track holds speed.
 //
-// More steering:
-//   Inside track passes through stop and begins reversing.
+// Near full sideways:
+//   Inside track smoothly crosses zero and reverses.
 //
 // Full sideways:
-//   Tracks run opposite directions for a pivot.
-//
-// There is no separate pivot mode and no abrupt transition.
-void driveMixer2(
+//   True pivot.
+void driveMixer3(
   float throttle,
   float steering,
   float stickMagnitude,
@@ -108,12 +156,12 @@ void driveMixer2(
   leftTrack  = 0.0f;
   rightTrack = 0.0f;
 
-  float throttleMagnitude = abs(throttle);
-  float steeringMagnitude = abs(steering);
-
   if (stickMagnitude <= 0.0f) {
     return;
   }
+
+  float throttleMagnitude = abs(throttle);
+  float steeringMagnitude = abs(steering);
 
   float totalIntent =
     throttleMagnitude + steeringMagnitude;
@@ -122,24 +170,15 @@ void driveMixer2(
     return;
   }
 
-  // 0.0 = straight travel
-  // 1.0 = full sideways pivot
+  // 0.0 = straight
+  // 1.0 = full sideways
   float turnRatio =
-    steeringMagnitude / totalIntent;
+  steeringMagnitude / stickMagnitude;
+  turnRatio =
+    constrain(turnRatio, 0.0f, 1.0f);
 
-  turnRatio = constrain(turnRatio, 0.0f, 1.0f);
-
-  // Makes steering gentle near straight ahead while remaining
-  // continuous all the way into a pivot.
-  float shapedTurn =
-    powf(turnRatio, TURN_CURVE);
-
-  // Progresses continuously:
-  // +1.0 = inside track matches outside track
-  //  0.0 = inside track stopped
-  // -1.0 = inside track fully reversed
   float insideFactor =
-    1.0f - (2.0f * shapedTurn);
+    calculateInsideTrackFactor(turnRatio);
 
   float travelDirection;
 
@@ -150,7 +189,8 @@ void driveMixer2(
     travelDirection = -1.0f;
   }
   else {
-    // Pure sideways movement performs a forward-oriented pivot.
+    // With no forward/reverse input, full sideways movement
+    // produces a normal pivot.
     travelDirection = 1.0f;
   }
 
@@ -163,7 +203,7 @@ void driveMixer2(
   bool steeringRight = steering > 0.0f;
   bool movingForward = travelDirection > 0.0f;
 
-  // This makes reverse steering mirror forward steering.
+  // Reverse steering mirrors forward steering.
   bool outsideTrackIsLeft =
     (steeringRight == movingForward);
 
@@ -187,6 +227,13 @@ void driveMixer2(
     constrain(rightTrack, -1.0f, 1.0f);
 }
 
+
+// Temporary PS4 light-bar diagnostics.
+//
+// Blue   = stick centered
+// Green  = both tracks commanded to move
+// Yellow = one track commanded to stop
+// Red    = both tracks stopped while stick is displaced
 void updateDriveDiagnosticLED(
   int leftPWM,
   int rightPWM,
@@ -197,19 +244,15 @@ void updateDriveDiagnosticLED(
   int state;
 
   if (stickMagnitude <= 0.01f) {
-    // Blue: stick is centered.
     state = 0;
   }
   else if (leftPWM == 0 && rightPWM == 0) {
-    // Red: stick is moved, but software commanded both tracks to stop.
     state = 1;
   }
   else if (leftPWM == 0 || rightPWM == 0) {
-    // Yellow: software commanded one track to stop.
     state = 2;
   }
   else {
-    // Green: software commanded both tracks to move.
     state = 3;
   }
 
@@ -237,6 +280,8 @@ void updateDriveDiagnosticLED(
       break;
   }
 }
+
+
 void processController()
 {
   float throttle = 0.0f;
@@ -252,7 +297,7 @@ void processController()
   float leftTrack  = 0.0f;
   float rightTrack = 0.0f;
 
-  driveMixer2(
+  driveMixer3(
     throttle,
     steering,
     stickMagnitude,
@@ -261,14 +306,18 @@ void processController()
   );
 
   int leftPWM =
-    trackCommandToPWM(leftTrack);
+    trackSpeedToPWM(leftTrack);
 
   int rightPWM =
-    trackCommandToPWM(rightTrack);
+    trackSpeedToPWM(rightTrack);
 
   moveTank(leftPWM, rightPWM);
-  
-  updateDriveDiagnosticLED(leftPWM, rightPWM, stickMagnitude);
+
+  updateDriveDiagnosticLED(
+    leftPWM,
+    rightPWM,
+    stickMagnitude
+  );
 
   // Right stick arm operation remains unchanged.
   int arm = myController->axisRY();

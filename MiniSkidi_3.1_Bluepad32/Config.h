@@ -2,7 +2,7 @@
 #define CONFIG_H
 
 // ======================================================
-// MiniSkidi V4.2 - Drive Engine 2.0
+// MiniSkidi V4.3 - Drive Engine 3.0
 // "Operate like a real skid steer, not an RC toy."
 // ======================================================
 
@@ -33,13 +33,23 @@ constexpr int DEADZONE = 100;
 constexpr int MIN_PWM = 95;
 constexpr int MAX_PWM = 255;
 
-// Commands smaller than this intentionally stop the track.
-// This avoids commanding a motor inside its unusable stall range.
-constexpr float TRACK_ZERO_BAND = 0.08f;
+constexpr int TRACK_MIN_PWM = MIN_PWM;
+constexpr int TRACK_MAX_PWM = MAX_PWM;
 
-// Higher values make ordinary steering gentler.
-// Suggested tuning range: 1.2 to 2.2
-constexpr float TURN_CURVE = 1.60f;
+// Below this track command, intentionally stop the track.
+// This region should occur only near an intentional pivot.
+constexpr float TRACK_STOP_BAND = 0.025f;
+
+// Normal arc steering continues through this portion
+// of the turn range.
+constexpr float ARC_END = 0.82f;
+
+// Slowest the inside track runs during an ordinary arc.
+// 0.35 = 35% of the outside-track command.
+constexpr float MIN_ARC_SPEED = 0.35f;
+
+// Higher values produce gentler steering near straight ahead.
+constexpr float TURN_RESPONSE = 1.50f;
 
 // ESP32 PWM settings
 constexpr int PWM_FREQUENCY  = 20000;
