@@ -50,7 +50,13 @@ constexpr float MIN_ARC_SPEED = 0.35f;
 
 // Higher values produce gentler steering near straight ahead.
 constexpr float TURN_RESPONSE = 1.50f;
+// Stick magnitude where the outer-ring pivot blend begins.
+constexpr float PIVOT_RING_START = 0.88f;
 
+// Minimum sideways direction required for the outer ring
+// to request a stronger pivot. 0.75 is roughly 49 degrees
+// or more away from straight forward/reverse.
+constexpr float PIVOT_DIRECTION_MIN = 0.75f;
 // ESP32 PWM settings
 constexpr int PWM_FREQUENCY  = 20000;
 constexpr int PWM_RESOLUTION = 8;

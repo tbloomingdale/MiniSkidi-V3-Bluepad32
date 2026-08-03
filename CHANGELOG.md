@@ -2,6 +2,46 @@
 
 
 
+\## Version 4.3 - Drive Engine 3.1
+
+
+
+\### Added
+
+
+
+\- Outer-ring pivot assistance
+
+\- Stronger pivot intent near full sideways stick travel
+
+
+
+\### Improved
+
+
+
+\- Full left/right pivot accessibility
+
+\- Operator confidence
+
+\- Transition from tight turns into pivots
+
+
+
+\### Verified
+
+
+
+\- Straight driving remains stable
+
+\- Wide and medium arc steering remains smooth
+
+\- No steering dead spots observed
+
+\- PS4 diagnostic light remained green during testing
+
+
+
 \## Version 4.2 Build 2
 
 

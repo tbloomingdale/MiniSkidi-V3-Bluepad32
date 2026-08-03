@@ -170,15 +170,54 @@ void driveMixer3(
     return;
   }
 
-  // 0.0 = straight
-  // 1.0 = full sideways
-  float turnRatio =
+// 0.0 = straight
+// 1.0 = full sideways
+float turnRatio =
   steeringMagnitude / stickMagnitude;
+
+turnRatio =
+  constrain(turnRatio, 0.0f, 1.0f);
+
+
+// Outer-ring pivot assistance.
+//
+// Normal stick movement keeps the existing smooth arc behavior.
+//
+// When the operator pushes the stick close to its outer gate
+// and points it mostly sideways, the drive engine blends more
+// confidently toward a pivot. This makes pivoting discoverable
+// by feel without requiring a perfectly horizontal stick.
+if (stickMagnitude >= PIVOT_RING_START &&
+    turnRatio >= PIVOT_DIRECTION_MIN) {
+
+  float ringPosition =
+    (stickMagnitude - PIVOT_RING_START) /
+    (1.0f - PIVOT_RING_START);
+
+  ringPosition =
+    constrain(ringPosition, 0.0f, 1.0f);
+
+  float directionPosition =
+    (turnRatio - PIVOT_DIRECTION_MIN) /
+    (1.0f - PIVOT_DIRECTION_MIN);
+
+  directionPosition =
+    constrain(directionPosition, 0.0f, 1.0f);
+
+  float pivotIntent =
+    ringPosition * directionPosition;
+
+  // Blend the existing turn ratio toward full pivot.
+  turnRatio =
+    turnRatio +
+    ((1.0f - turnRatio) * pivotIntent);
+
   turnRatio =
     constrain(turnRatio, 0.0f, 1.0f);
+}
 
-  float insideFactor =
-    calculateInsideTrackFactor(turnRatio);
+float insideFactor =
+  calculateInsideTrackFactor(turnRatio);
 
   float travelDirection;
 
