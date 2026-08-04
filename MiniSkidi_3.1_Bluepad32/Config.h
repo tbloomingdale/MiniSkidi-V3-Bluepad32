@@ -67,4 +67,34 @@ constexpr int LEFT_IN2_CHANNEL  = 1;
 constexpr int RIGHT_IN1_CHANNEL = 2;
 constexpr int RIGHT_IN2_CHANNEL = 3;
 
+// ======================================================
+// Drive modes
+// ======================================================
+
+enum class DriveMode {
+  WORK,
+  DRIVE,
+  TRAVEL
+};
+
+// ======================================================
+// Work Mode
+// ======================================================
+
+constexpr float WORK_SPEED_SCALE        = 0.85f;
+constexpr float WORK_RESPONSE_EXPONENT  = 1.25f;
+
+// ======================================================
+// Drive Mode
+// ======================================================
+
+constexpr float DRIVE_SPEED_SCALE       = 1.00f;
+
+// ======================================================
+// Travel Mode
+// ======================================================
+
+constexpr float TRAVEL_RESPONSE_EXPONENT = 0.45f;
+
+
 #endif

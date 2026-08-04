@@ -10,11 +10,19 @@ void stopArm();
 void processController();
 void setupServos();
 void testBucketServo();
+void setDriveModeLED();
+const char* getDriveModeName();
 
 ControllerPtr myController = nullptr;
 
 void onConnectedController(ControllerPtr ctl) {
   myController = ctl;
+  setDriveModeLED();
+
+Serial.printf(
+    "Default Drive Mode: %s\n",
+    getDriveModeName()
+);
 
   Serial.println();
   Serial.println("************************");

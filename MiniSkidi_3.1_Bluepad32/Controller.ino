@@ -2,6 +2,137 @@
 // MiniSkidi Drive Engine 3.0
 // ======================================================
 
+// ======================================================
+// Drive Mode Manager
+// ======================================================
+
+DriveMode currentDriveMode = DriveMode::DRIVE;
+
+
+// Returns the name used by the Serial Monitor.
+const char* getDriveModeName()
+{
+  switch (currentDriveMode) {
+    case DriveMode::WORK:
+      return "WORK";
+
+    case DriveMode::TRAVEL:
+      return "TRAVEL";
+
+    case DriveMode::DRIVE:
+    default:
+      return "DRIVE";
+  }
+}
+
+
+// Sets the PS4 light-bar color for the current drive mode.
+//
+// Blue  = Work / precision
+// Green = Drive / normal
+// Red   = Travel
+void setDriveModeLED()
+{
+  if (myController == nullptr ||
+      !myController->isConnected()) {
+    return;
+  }
+
+  switch (currentDriveMode) {
+    case DriveMode::WORK:
+      myController->setColorLED(0, 0, 255);
+      break;
+
+    case DriveMode::TRAVEL:
+      myController->setColorLED(255, 0, 0);
+      break;
+
+    case DriveMode::DRIVE:
+    default:
+      myController->setColorLED(0, 255, 0);
+      break;
+  }
+}
+
+
+// Selects drive modes with one D-pad tap.
+//
+// D-pad Up    = Travel
+// D-pad Right = Drive
+// D-pad Down  = Work
+//
+// Edge detection prevents a held button from repeatedly
+// selecting the same mode.
+void updateDriveModeFromDpad()
+{
+  static uint8_t previousDpad = 0;
+
+  uint8_t currentDpad = myController->dpad();
+  uint8_t newlyPressed =
+    currentDpad & static_cast<uint8_t>(~previousDpad);
+
+  DriveMode requestedMode = currentDriveMode;
+
+  if (newlyPressed & DPAD_UP) {
+    requestedMode = DriveMode::TRAVEL;
+  }
+  else if (newlyPressed & DPAD_RIGHT) {
+    requestedMode = DriveMode::DRIVE;
+  }
+  else if (newlyPressed & DPAD_DOWN) {
+    requestedMode = DriveMode::WORK;
+  }
+
+  previousDpad = currentDpad;
+
+  if (requestedMode == currentDriveMode) {
+    return;
+  }
+
+  currentDriveMode = requestedMode;
+
+  setDriveModeLED();
+
+  Serial.printf(
+    "Drive Mode: %s\n",
+    getDriveModeName()
+  );
+}
+
+
+// Adjusts stick magnitude without changing steering direction.
+//
+// Work:
+//   Reduces maximum drive output.
+//
+// Drive:
+//   Preserves the current Drive Engine 3.1 response.
+//
+// Travel:
+//   Reaches stronger output earlier while retaining the same
+//   full-stick maximum and the same steering direction.
+float applyDriveModeToMagnitude(float stickMagnitude)
+{
+  stickMagnitude =
+    constrain(stickMagnitude, 0.0f, 1.0f);
+
+  switch (currentDriveMode) {
+    case DriveMode::WORK:
+  return
+    powf(stickMagnitude, WORK_RESPONSE_EXPONENT) *
+    WORK_SPEED_SCALE;
+
+    case DriveMode::TRAVEL:
+      return powf(
+        stickMagnitude,
+        TRAVEL_RESPONSE_EXPONENT
+      );
+
+    case DriveMode::DRIVE:
+    default:
+      return stickMagnitude * DRIVE_SPEED_SCALE;
+  }
+}
 
 // Reads the complete left-stick position using one circular
 // dead zone.
@@ -323,6 +454,8 @@ void updateDriveDiagnosticLED(
 
 void processController()
 {
+  updateDriveModeFromDpad();
+
   float throttle = 0.0f;
   float steering = 0.0f;
   float stickMagnitude = 0.0f;
@@ -333,16 +466,32 @@ void processController()
     stickMagnitude
   );
 
-  float leftTrack  = 0.0f;
-  float rightTrack = 0.0f;
+float profiledMagnitude =
+  applyDriveModeToMagnitude(stickMagnitude);
 
-  driveMixer3(
-    throttle,
-    steering,
-    stickMagnitude,
-    leftTrack,
-    rightTrack
-  );
+float profileScale = 0.0f;
+
+if (stickMagnitude > 0.001f) {
+  profileScale =
+    profiledMagnitude / stickMagnitude;
+}
+
+float profiledThrottle =
+  throttle * profileScale;
+
+float profiledSteering =
+  steering * profileScale;
+
+float leftTrack  = 0.0f;
+float rightTrack = 0.0f;
+
+driveMixer3(
+  profiledThrottle,
+  profiledSteering,
+  profiledMagnitude,
+  leftTrack,
+  rightTrack
+);
 
   int leftPWM =
     trackSpeedToPWM(leftTrack);
@@ -352,11 +501,11 @@ void processController()
 
   moveTank(leftPWM, rightPWM);
 
-  updateDriveDiagnosticLED(
-    leftPWM,
-    rightPWM,
-    stickMagnitude
-  );
+ // updateDriveDiagnosticLED(
+//   leftPWM,
+//   rightPWM,
+//   stickMagnitude
+// );
 
   // Right stick arm operation remains unchanged.
   int arm = myController->axisRY();
@@ -368,15 +517,18 @@ void processController()
   controlArm(arm, DEADZONE);
 
   Serial.printf(
-    "Throttle:%6.2f Steering:%6.2f Mag:%5.2f "
-    "Left:%4d Right:%4d Arm:%4d\n",
-    throttle,
-    steering,
-    stickMagnitude,
-    leftPWM,
-    rightPWM,
-    arm
-  );
+  "Mode:%-6s Throttle:%6.2f Steering:%6.2f "
+  "Mag:%5.2f Profile:%5.2f "
+  "Left:%4d Right:%4d Arm:%4d\n",
+  getDriveModeName(),
+  throttle,
+  steering,
+  stickMagnitude,
+  profiledMagnitude,
+  leftPWM,
+  rightPWM,
+  arm
+);
 
   delay(20);
 }
