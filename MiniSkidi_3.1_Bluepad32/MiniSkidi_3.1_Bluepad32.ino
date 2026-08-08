@@ -19,6 +19,13 @@ void onConnectedController(ControllerPtr ctl) {
   myController = ctl;
   setDriveModeLED();
 
+ctl->playDualRumble(
+  0,      // start immediately
+  600,    // duration: 250 ms
+  180,     // weak motor
+  255     // strong motor
+);
+
 Serial.printf(
     "Default Drive Mode: %s\n",
     getDriveModeName()
