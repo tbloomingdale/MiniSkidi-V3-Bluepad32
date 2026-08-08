@@ -30,7 +30,7 @@ constexpr int ARM_IN2 = 19;
 constexpr int DEADZONE = 100;
 
 // Track PWM settings
-constexpr int MIN_PWM = 95;
+constexpr int MIN_PWM = 155;
 constexpr int MAX_PWM = 255;
 
 constexpr int TRACK_MIN_PWM = MIN_PWM;

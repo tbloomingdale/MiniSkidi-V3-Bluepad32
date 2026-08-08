@@ -263,20 +263,19 @@ int trackSpeedToPWM(float trackSpeed)
   return trackSpeed > 0.0f ? pwm : -pwm;
 }
 
-
-// Outside-track-priority skid-steer mixer.
+// ======================================================
+// Drive Engine 4 - Track Differential Mixer
+// ======================================================
 //
-// Small steering:
-//   Both tracks continue moving.
+// Normal turns:
+//   Outside track holds commanded speed.
+//   Inside track slows but never stops.
 //
-// Increasing steering:
-//   Inside track slows while outside track holds speed.
+// Pivot:
+//   Only begins when the stick is very close to full sideways.
+//   Inside track reverses for a true skid-steer pivot.
 //
-// Near full sideways:
-//   Inside track smoothly crosses zero and reverses.
-//
-// Full sideways:
-//   True pivot.
+// This avoids the old arc-to-pivot zero-speed transition.
 void driveMixer3(
   float throttle,
   float steering,
@@ -287,107 +286,120 @@ void driveMixer3(
   leftTrack  = 0.0f;
   rightTrack = 0.0f;
 
-  if (stickMagnitude <= 0.0f) {
+  if (stickMagnitude <= 0.001f) {
     return;
   }
 
-  float throttleMagnitude = abs(throttle);
   float steeringMagnitude = abs(steering);
 
-  float totalIntent =
-    throttleMagnitude + steeringMagnitude;
-
-  if (totalIntent <= 0.001f) {
-    return;
-  }
-
-// 0.0 = straight
-// 1.0 = full sideways
-float turnRatio =
-  steeringMagnitude / stickMagnitude;
-
-turnRatio =
-  constrain(turnRatio, 0.0f, 1.0f);
-
-
-// Outer-ring pivot assistance.
-//
-// Normal stick movement keeps the existing smooth arc behavior.
-//
-// When the operator pushes the stick close to its outer gate
-// and points it mostly sideways, the drive engine blends more
-// confidently toward a pivot. This makes pivoting discoverable
-// by feel without requiring a perfectly horizontal stick.
-if (stickMagnitude >= PIVOT_RING_START &&
-    turnRatio >= PIVOT_DIRECTION_MIN) {
-
-  float ringPosition =
-    (stickMagnitude - PIVOT_RING_START) /
-    (1.0f - PIVOT_RING_START);
-
-  ringPosition =
-    constrain(ringPosition, 0.0f, 1.0f);
-
-  float directionPosition =
-    (turnRatio - PIVOT_DIRECTION_MIN) /
-    (1.0f - PIVOT_DIRECTION_MIN);
-
-  directionPosition =
-    constrain(directionPosition, 0.0f, 1.0f);
-
-  float pivotIntent =
-    ringPosition * directionPosition;
-
-  // Blend the existing turn ratio toward full pivot.
-  turnRatio =
-    turnRatio +
-    ((1.0f - turnRatio) * pivotIntent);
+  // 0.0 = straight ahead / reverse
+  // 1.0 = completely sideways
+  float turnRatio =
+    steeringMagnitude / stickMagnitude;
 
   turnRatio =
     constrain(turnRatio, 0.0f, 1.0f);
-}
 
-float insideFactor =
-  calculateInsideTrackFactor(turnRatio);
+  // Drive Engine 4 pivot boundary.
+  //
+  // Ordinary diagonal stick positions remain arc turns.
+  // Pivot begins only very close to full sideways.
+  constexpr float DE4_PIVOT_START = 0.96f;
 
-  float travelDirection;
+  // ------------------------------------------------------
+  // NORMAL ARC STEERING
+  // ------------------------------------------------------
+  if (turnRatio < DE4_PIVOT_START) {
 
-  if (throttle > 0.001f) {
-    travelDirection = 1.0f;
+    float arcPosition =
+      turnRatio / DE4_PIVOT_START;
+
+    arcPosition =
+      constrain(arcPosition, 0.0f, 1.0f);
+
+    float shapedTurn =
+      powf(arcPosition, TURN_RESPONSE);
+
+    float insideFactor =
+      1.0f -
+      ((1.0f - MIN_ARC_SPEED) * shapedTurn);
+
+    // The inside track is never allowed below
+    // MIN_ARC_SPEED during a normal turn.
+    insideFactor =
+      constrain(
+        insideFactor,
+        MIN_ARC_SPEED,
+        1.0f
+      );
+
+    float travelDirection = 1.0f;
+
+    if (throttle < -0.001f) {
+      travelDirection = -1.0f;
+    }
+
+    float outsideTrack =
+      travelDirection * stickMagnitude;
+
+    float insideTrack =
+      outsideTrack * insideFactor;
+
+    bool steeringRight =
+      steering > 0.0f;
+
+    bool movingForward =
+      travelDirection > 0.0f;
+
+    bool outsideTrackIsLeft =
+      (steeringRight == movingForward);
+
+    if (steeringMagnitude <= 0.001f) {
+      leftTrack  = outsideTrack;
+      rightTrack = outsideTrack;
+    }
+    else if (outsideTrackIsLeft) {
+      leftTrack  = outsideTrack;
+      rightTrack = insideTrack;
+    }
+    else {
+      leftTrack  = insideTrack;
+      rightTrack = outsideTrack;
+    }
   }
-  else if (throttle < -0.001f) {
-    travelDirection = -1.0f;
-  }
+
+  // ------------------------------------------------------
+  // PIVOT STEERING
+  // ------------------------------------------------------
   else {
-    // With no forward/reverse input, full sideways movement
-    // produces a normal pivot.
-    travelDirection = 1.0f;
-  }
 
-  float outsideTrack =
-    travelDirection * stickMagnitude;
+    float pivotPosition =
+      (turnRatio - DE4_PIVOT_START) /
+      (1.0f - DE4_PIVOT_START);
 
-  float insideTrack =
-    outsideTrack * insideFactor;
+    pivotPosition =
+      constrain(pivotPosition, 0.0f, 1.0f);
 
-  bool steeringRight = steering > 0.0f;
-  bool movingForward = travelDirection > 0.0f;
+    float reverseFactor =
+      MIN_ARC_SPEED +
+      ((1.0f - MIN_ARC_SPEED) * pivotPosition);
 
-  // Reverse steering mirrors forward steering.
-  bool outsideTrackIsLeft =
-    (steeringRight == movingForward);
+    float outsideTrack =
+      stickMagnitude;
 
-  if (steeringMagnitude <= 0.001f) {
-    leftTrack  = outsideTrack;
-    rightTrack = outsideTrack;
-  }
-  else if (outsideTrackIsLeft) {
-    leftTrack  = outsideTrack;
-    rightTrack = insideTrack;
-  }
-  else {
-    leftTrack  = insideTrack;
-    rightTrack = outsideTrack;
+    float insideTrack =
+      -stickMagnitude * reverseFactor;
+
+    if (steering > 0.0f) {
+      // Right pivot
+      leftTrack  = outsideTrack;
+      rightTrack = insideTrack;
+    }
+    else {
+      // Left pivot
+      leftTrack  = insideTrack;
+      rightTrack = outsideTrack;
+    }
   }
 
   leftTrack =
@@ -396,7 +408,6 @@ float insideFactor =
   rightTrack =
     constrain(rightTrack, -1.0f, 1.0f);
 }
-
 
 // Temporary PS4 light-bar diagnostics.
 //
