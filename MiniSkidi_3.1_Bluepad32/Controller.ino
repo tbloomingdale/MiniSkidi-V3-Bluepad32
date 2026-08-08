@@ -54,6 +54,69 @@ void setDriveModeLED()
   }
 }
 
+// Provides tactile confirmation when changing drive modes.
+//
+// Work   = 1 pulse
+// Drive  = 2 pulses
+// Travel = 3 pulses
+void rumbleDriveMode()
+{
+  if (myController == nullptr ||
+      !myController->isConnected()) {
+    return;
+  }
+
+  switch (currentDriveMode) {
+
+    case DriveMode::WORK:
+      myController->playDualRumble(
+        0,
+        180,
+        120,
+        200
+      );
+      break;
+
+    case DriveMode::DRIVE:
+      myController->playDualRumble(
+        0,
+        180,
+        120,
+        200
+      );
+
+      myController->playDualRumble(
+        300,
+        180,
+        120,
+        200
+      );
+      break;
+
+    case DriveMode::TRAVEL:
+      myController->playDualRumble(
+        0,
+        180,
+        120,
+        200
+      );
+
+      myController->playDualRumble(
+        300,
+        180,
+        120,
+        200
+      );
+
+      myController->playDualRumble(
+        600,
+        180,
+        120,
+        200
+      );
+      break;
+  }
+}
 
 // Selects drive modes with one D-pad tap.
 //
@@ -92,6 +155,7 @@ void updateDriveModeFromDpad()
   currentDriveMode = requestedMode;
 
   setDriveModeLED();
+  rumbleDriveMode();
 
   Serial.printf(
     "Drive Mode: %s\n",
