@@ -52,36 +52,58 @@ void moveTank(int leftSpeed, int rightSpeed) {
   );
 }
 
-// The arm remains simple full-speed forward/reverse/stop.
-void rotateArmMotor(int motorDirection) {
-  if (motorDirection == FORWARD) {
-    digitalWrite(ARM_IN1, HIGH);
-    digitalWrite(ARM_IN2, LOW);
+// Sets the arm motor to a signed PWM speed:
+// -255 = full down
+//    0 = stopped
+// +255 = full up
+void setArmMotorPWM(int speed) {
+  speed = constrain(speed, -ARM_MAX_PWM, ARM_MAX_PWM);
+
+  if (speed > 0) {
+    ledcWrite(ARM_IN1_CHANNEL, speed);
+    ledcWrite(ARM_IN2_CHANNEL, 0);
   }
-  else if (motorDirection == BACKWARD) {
-    digitalWrite(ARM_IN1, LOW);
-    digitalWrite(ARM_IN2, HIGH);
+  else if (speed < 0) {
+    ledcWrite(ARM_IN1_CHANNEL, 0);
+    ledcWrite(ARM_IN2_CHANNEL, -speed);
   }
   else {
-    digitalWrite(ARM_IN1, LOW);
-    digitalWrite(ARM_IN2, LOW);
+    ledcWrite(ARM_IN1_CHANNEL, 0);
+    ledcWrite(ARM_IN2_CHANNEL, 0);
   }
 }
-
 void controlArm(int armValue, int deadzone) {
-  if (armValue > deadzone) {
-    rotateArmMotor(FORWARD);
+  if (abs(armValue) <= deadzone) {
+    setArmMotorPWM(0);
+    return;
   }
-  else if (armValue < -deadzone) {
-    rotateArmMotor(BACKWARD);
+
+  int magnitude = abs(armValue);
+
+  int pwm = map(
+    magnitude,
+    deadzone,
+    512,
+    ARM_MIN_PWM,
+    ARM_MAX_PWM
+  );
+
+  pwm = constrain(
+    pwm,
+    ARM_MIN_PWM,
+    ARM_MAX_PWM
+  );
+
+  if (armValue > 0) {
+    setArmMotorPWM(pwm);
   }
   else {
-    rotateArmMotor(STOP);
+    setArmMotorPWM(-pwm);
   }
 }
 
 void stopArm() {
-  rotateArmMotor(STOP);
+  setArmMotorPWM(0);
 }
 
 void setupMotors() {
@@ -115,10 +137,21 @@ void setupMotors() {
   ledcAttachPin(RIGHT_IN1, RIGHT_IN1_CHANNEL);
   ledcAttachPin(RIGHT_IN2, RIGHT_IN2_CHANNEL);
 
-  // Arm motor pins remain normal digital outputs.
-  pinMode(ARM_IN1, OUTPUT);
-  pinMode(ARM_IN2, OUTPUT);
+  // Configure PWM channels for proportional arm control.
+ledcSetup(
+  ARM_IN1_CHANNEL,
+  PWM_FREQUENCY,
+  PWM_RESOLUTION
+);
 
+ledcSetup(
+  ARM_IN2_CHANNEL,
+  PWM_FREQUENCY,
+  PWM_RESOLUTION
+);
+
+ledcAttachPin(ARM_IN1, ARM_IN1_CHANNEL);
+ledcAttachPin(ARM_IN2, ARM_IN2_CHANNEL);
   moveTank(0, 0);
   stopArm();
 }

@@ -66,6 +66,15 @@ constexpr int LEFT_IN1_CHANNEL  = 0;
 constexpr int LEFT_IN2_CHANNEL  = 1;
 constexpr int RIGHT_IN1_CHANNEL = 2;
 constexpr int RIGHT_IN2_CHANNEL = 3;
+// Arm PWM channels
+constexpr int ARM_IN1_CHANNEL = 4;
+constexpr int ARM_IN2_CHANNEL = 5;
+
+// Proportional arm control
+// Minimum PWM needed to start the arm moving.
+// We will tune this on the actual machine.
+constexpr int ARM_MIN_PWM = 100;
+constexpr int ARM_MAX_PWM = 255;
 
 // ======================================================
 // Drive modes
