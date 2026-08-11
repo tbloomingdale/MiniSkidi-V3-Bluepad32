@@ -12,6 +12,11 @@ MOTOR_PINS motorPins[] = {
 constexpr int NUM_MOTORS =
   sizeof(motorPins) / sizeof(motorPins[0]);
 
+
+// ======================================================
+// Drive Motor PWM
+// ======================================================
+
 // Sets one drive motor to a signed PWM speed:
 // -255 = full reverse
 //    0 = stopped
@@ -37,6 +42,7 @@ void setDriveMotorPWM(
   }
 }
 
+
 // Drives both tracks using signed PWM speeds.
 void moveTank(int leftSpeed, int rightSpeed) {
   setDriveMotorPWM(
@@ -52,12 +58,21 @@ void moveTank(int leftSpeed, int rightSpeed) {
   );
 }
 
+
+// ======================================================
+// Proportional Arm PWM
+// ======================================================
+
 // Sets the arm motor to a signed PWM speed:
 // -255 = full down
 //    0 = stopped
 // +255 = full up
 void setArmMotorPWM(int speed) {
-  speed = constrain(speed, -ARM_MAX_PWM, ARM_MAX_PWM);
+  speed = constrain(
+    speed,
+    -ARM_MAX_PWM,
+    ARM_MAX_PWM
+  );
 
   if (speed > 0) {
     ledcWrite(ARM_IN1_CHANNEL, speed);
@@ -72,6 +87,8 @@ void setArmMotorPWM(int speed) {
     ledcWrite(ARM_IN2_CHANNEL, 0);
   }
 }
+
+
 void controlArm(int armValue, int deadzone) {
   if (abs(armValue) <= deadzone) {
     setArmMotorPWM(0);
@@ -102,11 +119,18 @@ void controlArm(int armValue, int deadzone) {
   }
 }
 
+
 void stopArm() {
   setArmMotorPWM(0);
 }
 
+
+// ======================================================
+// Motor Setup
+// ======================================================
+
 void setupMotors() {
+
   // Configure PWM channels for the drive tracks.
   ledcSetup(
     LEFT_IN1_CHANNEL,
@@ -132,26 +156,52 @@ void setupMotors() {
     PWM_RESOLUTION
   );
 
-  ledcAttachPin(LEFT_IN1, LEFT_IN1_CHANNEL);
-  ledcAttachPin(LEFT_IN2, LEFT_IN2_CHANNEL);
-  ledcAttachPin(RIGHT_IN1, RIGHT_IN1_CHANNEL);
-  ledcAttachPin(RIGHT_IN2, RIGHT_IN2_CHANNEL);
+  ledcAttachPin(
+    LEFT_IN1,
+    LEFT_IN1_CHANNEL
+  );
+
+  ledcAttachPin(
+    LEFT_IN2,
+    LEFT_IN2_CHANNEL
+  );
+
+  ledcAttachPin(
+    RIGHT_IN1,
+    RIGHT_IN1_CHANNEL
+  );
+
+  ledcAttachPin(
+    RIGHT_IN2,
+    RIGHT_IN2_CHANNEL
+  );
+
 
   // Configure PWM channels for proportional arm control.
-ledcSetup(
-  ARM_IN1_CHANNEL,
-  PWM_FREQUENCY,
-  PWM_RESOLUTION
-);
+  ledcSetup(
+    ARM_IN1_CHANNEL,
+    PWM_FREQUENCY,
+    PWM_RESOLUTION
+  );
 
-ledcSetup(
-  ARM_IN2_CHANNEL,
-  PWM_FREQUENCY,
-  PWM_RESOLUTION
-);
+  ledcSetup(
+    ARM_IN2_CHANNEL,
+    PWM_FREQUENCY,
+    PWM_RESOLUTION
+  );
 
-ledcAttachPin(ARM_IN1, ARM_IN1_CHANNEL);
-ledcAttachPin(ARM_IN2, ARM_IN2_CHANNEL);
+  ledcAttachPin(
+    ARM_IN1,
+    ARM_IN1_CHANNEL
+  );
+
+  ledcAttachPin(
+    ARM_IN2,
+    ARM_IN2_CHANNEL
+  );
+
+
+  // Start everything stopped.
   moveTank(0, 0);
   stopArm();
 }

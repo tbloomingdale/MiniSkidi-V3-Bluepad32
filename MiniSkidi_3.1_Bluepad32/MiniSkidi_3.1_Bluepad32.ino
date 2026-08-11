@@ -2,40 +2,56 @@
 #include <Bluepad32.h>
 #include "Config.h"
 
+// ======================================================
 // Functions located in other tabs
+// ======================================================
 void setupMotors();
 void moveTank(int leftCommand, int rightCommand);
 void controlArm(int armValue, int deadzone);
 void stopArm();
 void processController();
-void setupServos();
-void testBucketServo();
 void setDriveModeLED();
 const char* getDriveModeName();
+void setupBucketPWM();
+void centerBucketServo();
+void controlBucket(int bucketValue, int deadzone);
+
+// ======================================================
+// Controller State
+// ======================================================
 
 ControllerPtr myController = nullptr;
+
 bool controllerArmed = false;
+
 unsigned long controllerConnectedAt = 0;
 unsigned long controllerNeutralSince = 0;
 
+
+// ======================================================
+// Controller Connected
+// ======================================================
+
 void onConnectedController(ControllerPtr ctl) {
-myController = ctl;
-controllerArmed = false;
-controllerConnectedAt = millis();
-controllerNeutralSince = 0;
-setDriveModeLED();
+  myController = ctl;
 
-ctl->playDualRumble(
-  0,      // start immediately
-  600,    // duration: 600 ms
-  180,     // weak motor
-  255     // strong motor
-);
+  controllerArmed = false;
+  controllerConnectedAt = millis();
+  controllerNeutralSince = 0;
 
-Serial.printf(
+  setDriveModeLED();
+
+  ctl->playDualRumble(
+    0,      // start immediately
+    600,    // duration: 600 ms
+    180,    // weak motor
+    255     // strong motor
+  );
+
+  Serial.printf(
     "Default Drive Mode: %s\n",
     getDriveModeName()
-);
+  );
 
   Serial.println();
   Serial.println("************************");
@@ -43,25 +59,36 @@ Serial.printf(
   Serial.println("************************");
 }
 
+
+// ======================================================
+// Controller Disconnected
+// ======================================================
+
 void onDisconnectedController(ControllerPtr ctl) {
   moveTank(0, 0);
   stopArm();
 
   if (myController == ctl) {
-  myController = nullptr;
-  controllerArmed = false;
-  controllerConnectedAt = 0;
-  controllerNeutralSince = 0;
-}
+    myController = nullptr;
+
+    controllerArmed = false;
+    controllerConnectedAt = 0;
+    controllerNeutralSince = 0;
+  }
 
   Serial.println("Controller Disconnected");
 }
+
+
+// ======================================================
+// Setup
+// ======================================================
 
 void setup() {
   Serial.begin(115200);
 
   setupMotors();
-  // setupServos();
+setupBucketPWM();
 
   BP32.setup(
     &onConnectedController,
@@ -71,20 +98,28 @@ void setup() {
   Serial.println("Waiting for controller...");
 }
 
+
+// ======================================================
+// Main Loop
+// ======================================================
+
 void loop() {
   BP32.update();
 
   if (myController && myController->isConnected()) {
 
+    // --------------------------------------------------
+    // Neutral-stick safety interlock
+    // --------------------------------------------------
+
     if (!controllerArmed) {
       moveTank(0, 0);
       stopArm();
 
-      // Ignore the first controller reports after connection.
-      // Bluepad32 may initially report centered axes before
-      // the actual stick positions arrive.
+      // Ignore initial controller reports after connection.
       if (millis() - controllerConnectedAt < 700) {
         controllerNeutralSince = 0;
+
         delay(20);
         return;
       }
@@ -102,8 +137,8 @@ void loop() {
           controllerNeutralSince = millis();
         }
 
-        // Require both controls to remain centered continuously
-        // before enabling the machine.
+        // Require centered controls continuously
+        // before enabling operation.
         if (millis() - controllerNeutralSince >= 300) {
           controllerArmed = true;
 
@@ -127,6 +162,11 @@ void loop() {
       delay(20);
       return;
     }
+
+
+    // --------------------------------------------------
+    // Normal controller operation
+    // --------------------------------------------------
 
     processController();
   }

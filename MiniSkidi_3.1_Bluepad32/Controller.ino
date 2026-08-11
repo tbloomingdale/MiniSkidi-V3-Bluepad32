@@ -590,7 +590,17 @@ driveMixer3(
   }
 
   controlArm(arm, DEADZONE);
+// ======================================================
+// Bucket Control
+// Right stick X = curl / dump
+// ======================================================
 
+int bucketValue = myController->axisRX();
+
+controlBucket(
+  bucketValue,
+  DEADZONE
+);
   Serial.printf(
   "Mode:%-6s Throttle:%6.2f Steering:%6.2f "
   "Mag:%5.2f Profile:%5.2f "
