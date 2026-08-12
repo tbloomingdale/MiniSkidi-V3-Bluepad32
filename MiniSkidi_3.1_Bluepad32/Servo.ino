@@ -121,13 +121,13 @@ void controlBucket(int bucketValue, int deadzone)
     deadzone,
     512,
     1,
-    6
+    42
   );
 
   stepUs = constrain(
     stepUs,
     1,
-    6
+    42
   );
 
   if (bucketValue > 0) {
