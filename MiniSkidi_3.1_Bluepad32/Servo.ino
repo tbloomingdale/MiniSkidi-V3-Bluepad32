@@ -15,12 +15,24 @@
 
 
 // ======================================================
+// Bucket Position / Memory State
+// ======================================================
+
+constexpr int BUCKET_MIN_US = 700;
+constexpr int BUCKET_MAX_US = 2000;
+
+int bucketPositionUs = 1500;
+
+constexpr const char* BUCKET_PREF_NAMESPACE = "bucket";
+constexpr const char* BUCKET_PREF_KEY = "position";
+
+unsigned long bucketLastMovedAt = 0;
+bool bucketPositionDirty = false;
+
+
+// ======================================================
 // Bucket PWM Setup
 // ======================================================
-//
-// Channel 8 is used for the bucket servo at 50 Hz.
-// Duty starts at zero so the servo receives no position
-// command until we explicitly send one.
 
 void setupBucketPWM()
 {
@@ -35,6 +47,7 @@ void setupBucketPWM()
     BUCKET_SERVO_CHANNEL
   );
 
+  // No servo command at startup.
   ledcWrite(
     BUCKET_SERVO_CHANNEL,
     0
@@ -43,41 +56,9 @@ void setupBucketPWM()
 
 
 // ======================================================
-// Bucket Center Test
+// Bucket Output
 // ======================================================
 
-void centerBucketServo()
-{
-  // 1500 microseconds = approximate servo center.
-  //
-  // At 50 Hz:
-  // one PWM period = 20,000 microseconds
-  //
-  // 16-bit LEDC range = 0 to 65535.
-
-  uint32_t duty =
-    (1500UL * 65535UL) / 20000UL;
-
-  ledcWrite(
-    BUCKET_SERVO_CHANNEL,
-    duty
-  );
-}
-// ======================================================
-// Bucket Position Control
-// ======================================================
-
-// Conservative starting limits.
-// We will expand these only after physical testing.
-constexpr int BUCKET_MIN_US = 700;
-constexpr int BUCKET_MAX_US = 2000;
-
-// Starting software position.
-// This does NOT move the servo by itself.
-int bucketPositionUs = 1500;
-
-
-// Send a pulse width in microseconds to the bucket servo.
 void writeBucketMicroseconds(int pulseUs)
 {
   pulseUs = constrain(
@@ -94,14 +75,98 @@ void writeBucketMicroseconds(int pulseUs)
     duty
   );
 }
+
+
+// ======================================================
+// Bucket Position Memory
+// ======================================================
+
+// Load the last saved bucket position.
+// Falls back to 1500 if no valid saved value exists.
+//
+// Loading this value does NOT command the servo.
+void loadBucketPosition()
+{
+  preferences.begin(
+    BUCKET_PREF_NAMESPACE,
+    true
+  );
+
+  int savedPosition =
+    preferences.getInt(
+      BUCKET_PREF_KEY,
+      1500
+    );
+
+  preferences.end();
+
+  if (
+    savedPosition < BUCKET_MIN_US ||
+    savedPosition > BUCKET_MAX_US
+  ) {
+    savedPosition = 1500;
+  }
+
+  bucketPositionUs = savedPosition;
+
+  Serial.printf(
+    "Loaded bucket position: %d us\n",
+    bucketPositionUs
+  );
+}
+
+
+// Save the current commanded bucket position.
+void saveBucketPosition()
+{
+  preferences.begin(
+    BUCKET_PREF_NAMESPACE,
+    false
+  );
+
+  preferences.putInt(
+    BUCKET_PREF_KEY,
+    bucketPositionUs
+  );
+
+  preferences.end();
+
+  bucketPositionDirty = false;
+
+  Serial.printf(
+    "Saved bucket position: %d us\n",
+    bucketPositionUs
+  );
+}
+
+
+// Save the bucket position only after movement has
+// stopped for 1 second.
+//
+// This prevents continuous flash writes while the
+// operator is moving the bucket.
+void updateBucketPositionMemory()
+{
+  if (!bucketPositionDirty) {
+    return;
+  }
+
+  if (millis() - bucketLastMovedAt < 1000) {
+    return;
+  }
+
+  saveBucketPosition();
+}
+
+
 // ======================================================
 // Hydraulic-Style Bucket Control
 // ======================================================
 //
 // Right stick X controls bucket movement RATE.
 //
-// Small stick movement = slow bucket movement.
-// Large stick movement = faster bucket movement.
+// Small stick movement = slow movement.
+// Large stick movement = faster movement.
 // Centered stick = hold current bucket position.
 
 void controlBucket(int bucketValue, int deadzone)
@@ -112,10 +177,9 @@ void controlBucket(int bucketValue, int deadzone)
 
   int magnitude = abs(bucketValue);
 
-  // Convert stick travel into movement per controller update.
-  //
-  // 1 us per update = very fine movement
-  // 6 us per update = full-speed movement
+  // Current tested bucket response:
+  // 1 us/update near center
+  // 42 us/update at full stick
   int stepUs = map(
     magnitude,
     deadzone,
@@ -146,4 +210,7 @@ void controlBucket(int bucketValue, int deadzone)
   writeBucketMicroseconds(
     bucketPositionUs
   );
+
+  bucketLastMovedAt = millis();
+  bucketPositionDirty = true;
 }

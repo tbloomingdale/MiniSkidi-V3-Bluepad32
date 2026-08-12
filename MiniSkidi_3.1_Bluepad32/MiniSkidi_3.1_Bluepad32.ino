@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <Bluepad32.h>
 #include "Config.h"
+#include <Preferences.h>
 
 // ======================================================
 // Functions located in other tabs
@@ -13,8 +14,10 @@ void processController();
 void setDriveModeLED();
 const char* getDriveModeName();
 void setupBucketPWM();
-void centerBucketServo();
 void controlBucket(int bucketValue, int deadzone);
+void loadBucketPosition();
+void updateBucketPositionMemory();
+Preferences preferences;
 
 // ======================================================
 // Controller State
@@ -87,8 +90,9 @@ void onDisconnectedController(ControllerPtr ctl) {
 void setup() {
   Serial.begin(115200);
 
-  setupMotors();
+setupMotors();
 setupBucketPWM();
+loadBucketPosition();
 
   BP32.setup(
     &onConnectedController,
@@ -169,5 +173,6 @@ void loop() {
     // --------------------------------------------------
 
     processController();
+    updateBucketPositionMemory();
   }
 }
