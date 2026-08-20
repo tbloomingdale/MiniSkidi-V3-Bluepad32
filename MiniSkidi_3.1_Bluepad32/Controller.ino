@@ -601,6 +601,25 @@ controlBucket(
   bucketValue,
   DEADZONE
 );
+
+// ======================================================
+// Claw Control
+// R1 = open
+// L1 = close
+// ======================================================
+
+uint16_t buttons = myController->buttons();
+
+bool openClaw =
+  buttons & BUTTON_SHOULDER_R;
+
+bool closeClaw =
+  buttons & BUTTON_SHOULDER_L;
+
+controlClaw(
+  openClaw,
+  closeClaw
+);
   Serial.printf(
   "Mode:%-6s Throttle:%6.2f Steering:%6.2f "
   "Mag:%5.2f Profile:%5.2f "

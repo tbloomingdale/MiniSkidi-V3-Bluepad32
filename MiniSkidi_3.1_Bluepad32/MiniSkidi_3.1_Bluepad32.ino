@@ -6,18 +6,30 @@
 // ======================================================
 // Functions located in other tabs
 // ======================================================
+
 void setupMotors();
 void moveTank(int leftCommand, int rightCommand);
 void controlArm(int armValue, int deadzone);
 void stopArm();
+
 void processController();
 void setDriveModeLED();
 const char* getDriveModeName();
+
 void setupBucketPWM();
+void setupClawPWM();
+
 void controlBucket(int bucketValue, int deadzone);
+void controlClaw(bool openClaw, bool closeClaw);
+
 void loadBucketPosition();
 void updateBucketPositionMemory();
+
+void loadClawPosition();
+void updateClawPositionMemory();
+
 Preferences preferences;
+
 
 // ======================================================
 // Controller State
@@ -35,7 +47,8 @@ unsigned long controllerNeutralSince = 0;
 // Controller Connected
 // ======================================================
 
-void onConnectedController(ControllerPtr ctl) {
+void onConnectedController(ControllerPtr ctl)
+{
   myController = ctl;
 
   controllerArmed = false;
@@ -67,7 +80,8 @@ void onConnectedController(ControllerPtr ctl) {
 // Controller Disconnected
 // ======================================================
 
-void onDisconnectedController(ControllerPtr ctl) {
+void onDisconnectedController(ControllerPtr ctl)
+{
   moveTank(0, 0);
   stopArm();
 
@@ -87,12 +101,20 @@ void onDisconnectedController(ControllerPtr ctl) {
 // Setup
 // ======================================================
 
-void setup() {
+void setup()
+{
   Serial.begin(115200);
 
-setupMotors();
-setupBucketPWM();
-loadBucketPosition();
+  setupMotors();
+
+  setupBucketPWM();
+  setupClawPWM();
+
+  // Load remembered attachment positions.
+  // These functions update the software position only.
+  // They do NOT move the servos at startup.
+  loadBucketPosition();
+  loadClawPosition();
 
   BP32.setup(
     &onConnectedController,
@@ -107,7 +129,8 @@ loadBucketPosition();
 // Main Loop
 // ======================================================
 
-void loop() {
+void loop()
+{
   BP32.update();
 
   if (myController && myController->isConnected()) {
@@ -173,6 +196,9 @@ void loop() {
     // --------------------------------------------------
 
     processController();
+
+    // Save attachment positions after movement stops.
     updateBucketPositionMemory();
+    updateClawPositionMemory();
   }
 }

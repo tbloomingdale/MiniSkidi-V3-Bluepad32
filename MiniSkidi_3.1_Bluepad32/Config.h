@@ -27,6 +27,7 @@ constexpr int ARM_IN1 = 21;
 constexpr int ARM_IN2 = 19;
 // Bucket servo
 constexpr int BUCKET_SERVO_PIN = 23;
+constexpr int CLAW_SERVO_PIN = 22;
 
 // Controller center dead zone
 constexpr int DEADZONE = 100;
@@ -75,6 +76,10 @@ constexpr int ARM_IN2_CHANNEL = 5;
 constexpr int BUCKET_SERVO_CHANNEL = 8;
 constexpr int BUCKET_SERVO_FREQUENCY = 50;
 constexpr int BUCKET_SERVO_RESOLUTION = 16;
+
+constexpr int CLAW_SERVO_CHANNEL = 10;
+constexpr int CLAW_SERVO_FREQUENCY = 50;
+constexpr int CLAW_SERVO_RESOLUTION = 16;
 
 // Proportional arm control
 // Minimum PWM needed to start the arm moving.
