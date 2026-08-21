@@ -25,10 +25,14 @@ constexpr int LEFT_IN2 = 32;
 
 constexpr int ARM_IN1 = 21;
 constexpr int ARM_IN2 = 19;
+
+// Auxiliary lights
+constexpr int AUX_LIGHTS_IN1 = 18;
+constexpr int AUX_LIGHTS_IN2 = 5;
+
 // Bucket servo
 constexpr int BUCKET_SERVO_PIN = 23;
 constexpr int CLAW_SERVO_PIN = 22;
-
 // Controller center dead zone
 constexpr int DEADZONE = 100;
 

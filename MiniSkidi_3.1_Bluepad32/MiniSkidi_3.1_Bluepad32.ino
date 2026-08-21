@@ -8,6 +8,7 @@
 // ======================================================
 
 void setupMotors();
+void setupAuxLights();
 void moveTank(int leftCommand, int rightCommand);
 void controlArm(int armValue, int deadzone);
 void stopArm();
@@ -106,9 +107,10 @@ void setup()
   Serial.begin(115200);
 
   setupMotors();
+setupAuxLights();
 
-  setupBucketPWM();
-  setupClawPWM();
+setupBucketPWM();
+setupClawPWM();
 
   // Load remembered attachment positions.
   // These functions update the software position only.

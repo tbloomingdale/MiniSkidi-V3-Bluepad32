@@ -7,7 +7,64 @@
 // ======================================================
 
 DriveMode currentDriveMode = DriveMode::DRIVE;
+// ======================================================
+// Auxiliary Light State
+// ======================================================
 
+bool auxLightsOn = false;
+// ======================================================
+// Auxiliary Light Control
+// ======================================================
+//
+// Original MiniSkidi wiring:
+//
+// GPIO 18 HIGH + GPIO 5 LOW = lights ON
+// GPIO 18 LOW  + GPIO 5 LOW = lights OFF
+//
+// R3 toggles the lights.
+//
+
+void setupAuxLights()
+{
+  pinMode(AUX_LIGHTS_IN1, OUTPUT);
+  pinMode(AUX_LIGHTS_IN2, OUTPUT);
+
+  // Start with lights OFF.
+  digitalWrite(AUX_LIGHTS_IN1, LOW);
+  digitalWrite(AUX_LIGHTS_IN2, LOW);
+
+  auxLightsOn = false;
+}
+
+
+void updateAuxLights()
+{
+  static bool previousR3 = false;
+
+  bool currentR3 = myController->thumbR();
+
+  // Act only when R3 changes from
+  // released to pressed.
+  if (currentR3 && !previousR3) {
+
+    auxLightsOn = !auxLightsOn;
+
+    if (auxLightsOn) {
+      digitalWrite(AUX_LIGHTS_IN1, HIGH);
+      digitalWrite(AUX_LIGHTS_IN2, LOW);
+
+      Serial.println("Aux lights: ON");
+    }
+    else {
+      digitalWrite(AUX_LIGHTS_IN1, LOW);
+      digitalWrite(AUX_LIGHTS_IN2, LOW);
+
+      Serial.println("Aux lights: OFF");
+    }
+  }
+
+  previousR3 = currentR3;
+}
 
 // Returns the name used by the Serial Monitor.
 const char* getDriveModeName()
@@ -530,6 +587,7 @@ void updateDriveDiagnosticLED(
 void processController()
 {
   updateDriveModeFromDpad();
+  updateAuxLights();
 
   float throttle = 0.0f;
   float steering = 0.0f;
