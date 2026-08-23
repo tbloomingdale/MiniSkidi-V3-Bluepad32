@@ -721,4 +721,29 @@ if (currentL1 && !previousL1) {
 
 previousR1 = currentR1;
 previousL1 = currentL1;
+// ======================================================
+// Claw Control
+//
+// R2 = OPEN
+// L2 = CLOSE
+//
+// Triggers are treated as on/off controls for now.
+// Claw movement speed remains unchanged.
+// ======================================================
+
+int r2Value = myController->throttle();
+int l2Value = myController->brake();
+
+constexpr int CLAW_TRIGGER_THRESHOLD = 100;
+
+bool openClaw =
+  r2Value > CLAW_TRIGGER_THRESHOLD;
+
+bool closeClaw =
+  l2Value > CLAW_TRIGGER_THRESHOLD;
+
+controlClaw(
+  openClaw,
+  closeClaw
+);
 }

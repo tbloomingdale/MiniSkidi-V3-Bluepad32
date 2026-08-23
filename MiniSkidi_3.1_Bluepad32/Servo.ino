@@ -12,7 +12,8 @@
 //   L1 = dump preset
 //
 // Claw:
-//   Control mapping will be moved to R2 / L2.
+//   R2 = open
+//   L2 = close
 //
 
 
@@ -63,12 +64,18 @@ int bucketPresetTargetUs = BUCKET_SCOOP_US;
 constexpr int CLAW_MIN_US = 1000;
 constexpr int CLAW_MAX_US = 2000;
 
+// Fixed claw update interval.
+// Prevents claw speed from depending on main-loop speed.
+constexpr unsigned long CLAW_UPDATE_INTERVAL_MS = 20;
+
 int clawPositionUs = 1500;
 
 constexpr const char* CLAW_PREF_NAMESPACE = "claw";
 constexpr const char* CLAW_PREF_KEY = "position";
 
 unsigned long clawLastMovedAt = 0;
+unsigned long clawLastUpdateAt = 0;
+
 bool clawPositionDirty = false;
 
 
@@ -453,7 +460,7 @@ void updateBucketPreset()
 
   bucketLastUpdateAt = now;
 
-  // Previously tested preferred preset step.
+  // Tested preferred preset speed.
   constexpr int PRESET_STEP_US = 15;
 
   if (bucketPositionUs < bucketPresetTargetUs) {
@@ -501,9 +508,15 @@ void updateBucketPreset()
 // Hydraulic-Style Claw Control
 // ======================================================
 //
-// Existing claw movement function.
-// Controller mapping will be moved to R2/L2 after
-// the bucket preset system is fully tested.
+// R2 = OPEN
+// L2 = CLOSE
+//
+// Hold trigger = move.
+// Release trigger = hold.
+// Both triggers pressed = no movement.
+//
+// Claw updates are limited to once every 20 ms so
+// movement speed does not depend on main-loop speed.
 //
 
 void controlClaw(bool openClaw, bool closeClaw)
@@ -512,7 +525,18 @@ void controlClaw(bool openClaw, bool closeClaw)
     return;
   }
 
-  // Tested preferred claw speed.
+  unsigned long now = millis();
+
+  if (
+    now - clawLastUpdateAt <
+    CLAW_UPDATE_INTERVAL_MS
+  ) {
+    return;
+  }
+
+  clawLastUpdateAt = now;
+
+  // Previously tested preferred claw step.
   constexpr int CLAW_STEP_US = 20;
 
   if (openClaw) {
@@ -532,6 +556,6 @@ void controlClaw(bool openClaw, bool closeClaw)
     clawPositionUs
   );
 
-  clawLastMovedAt = millis();
+  clawLastMovedAt = now;
   clawPositionDirty = true;
 }
