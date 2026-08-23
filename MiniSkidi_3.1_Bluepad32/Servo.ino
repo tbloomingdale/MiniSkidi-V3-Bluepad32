@@ -7,11 +7,12 @@
 // drive and arm motors already use LEDC PWM resources.
 //
 // Bucket:
-//   Right stick X = curl / dump
+//   Right stick X = proportional manual curl / dump
+//   R1 = scoop / level preset
+//   L1 = dump preset
 //
 // Claw:
-//   R1 = open
-//   L1 = close
+//   Control mapping will be moved to R2 / L2.
 //
 
 
@@ -22,13 +23,30 @@
 constexpr int BUCKET_MIN_US = 700;
 constexpr int BUCKET_MAX_US = 2000;
 
+// Calibrated bucket presets after mechanical adjustment.
+constexpr int BUCKET_SCOOP_US = 2000;
+constexpr int BUCKET_DUMP_US  = 700;
+
+// Bucket movement is updated at a fixed interval.
+// This prevents servo speed from depending on how fast
+// the main ESP32 loop happens to execute.
+constexpr unsigned long BUCKET_UPDATE_INTERVAL_MS = 20;
+
 int bucketPositionUs = 1500;
 
 constexpr const char* BUCKET_PREF_NAMESPACE = "bucket";
 constexpr const char* BUCKET_PREF_KEY = "position";
 
 unsigned long bucketLastMovedAt = 0;
+unsigned long bucketLastUpdateAt = 0;
+
 bool bucketPositionDirty = false;
+
+// True while automatically moving toward a preset.
+bool bucketPresetActive = false;
+
+// Current automatic preset target.
+int bucketPresetTargetUs = BUCKET_SCOOP_US;
 
 
 // ======================================================
@@ -45,7 +63,6 @@ bool bucketPositionDirty = false;
 constexpr int CLAW_MIN_US = 1000;
 constexpr int CLAW_MAX_US = 2000;
 
-// Fallback position if no saved value exists.
 int clawPositionUs = 1500;
 
 constexpr const char* CLAW_PREF_NAMESPACE = "claw";
@@ -301,7 +318,9 @@ void updateClawPositionMemory()
 //
 // Small stick movement = slow movement.
 // Large stick movement = faster movement.
-// Centered stick = hold current bucket position.
+//
+// Bucket updates are limited to once every 20 ms so
+// movement speed does not depend on main-loop speed.
 //
 
 void controlBucket(int bucketValue, int deadzone)
@@ -310,11 +329,22 @@ void controlBucket(int bucketValue, int deadzone)
     return;
   }
 
+  unsigned long now = millis();
+
+  if (
+    now - bucketLastUpdateAt <
+    BUCKET_UPDATE_INTERVAL_MS
+  ) {
+    return;
+  }
+
+  bucketLastUpdateAt = now;
+
   int magnitude = abs(bucketValue);
 
-  // Tested bucket response:
+  // Tested hydraulic-style response:
   // 1 us/update near center
-  // 42 us/update at full stick
+  // 42 us/update at full stick.
   int stepUs = map(
     magnitude,
     deadzone,
@@ -346,8 +376,124 @@ void controlBucket(int bucketValue, int deadzone)
     bucketPositionUs
   );
 
-  bucketLastMovedAt = millis();
+  bucketLastMovedAt = now;
   bucketPositionDirty = true;
+}
+
+
+// ======================================================
+// Bucket Preset Control
+// ======================================================
+//
+// R1 = SCOOP / LEVEL = 2000 us
+// L1 = DUMP          = 700 us
+//
+// Preset movement uses the same fixed 20 ms timing.
+// Manual right-stick input cancels an active preset.
+//
+
+void startBucketScoopPreset()
+{
+  bucketPresetTargetUs = BUCKET_SCOOP_US;
+  bucketPresetActive = true;
+
+  // Allow the first preset step immediately.
+  bucketLastUpdateAt = 0;
+
+  Serial.printf(
+    "Bucket SCOOP preset started: %d us\n",
+    bucketPresetTargetUs
+  );
+}
+
+
+void startBucketDumpPreset()
+{
+  bucketPresetTargetUs = BUCKET_DUMP_US;
+  bucketPresetActive = true;
+
+  // Allow the first preset step immediately.
+  bucketLastUpdateAt = 0;
+
+  Serial.printf(
+    "Bucket DUMP preset started: %d us\n",
+    bucketPresetTargetUs
+  );
+}
+
+
+void cancelBucketPreset()
+{
+  if (!bucketPresetActive) {
+    return;
+  }
+
+  bucketPresetActive = false;
+
+  Serial.println(
+    "Bucket preset cancelled"
+  );
+}
+
+
+void updateBucketPreset()
+{
+  if (!bucketPresetActive) {
+    return;
+  }
+
+  unsigned long now = millis();
+
+  if (
+    now - bucketLastUpdateAt <
+    BUCKET_UPDATE_INTERVAL_MS
+  ) {
+    return;
+  }
+
+  bucketLastUpdateAt = now;
+
+  // Previously tested preferred preset step.
+  constexpr int PRESET_STEP_US = 15;
+
+  if (bucketPositionUs < bucketPresetTargetUs) {
+
+    bucketPositionUs += PRESET_STEP_US;
+
+    if (bucketPositionUs >= bucketPresetTargetUs) {
+      bucketPositionUs = bucketPresetTargetUs;
+    }
+  }
+  else if (bucketPositionUs > bucketPresetTargetUs) {
+
+    bucketPositionUs -= PRESET_STEP_US;
+
+    if (bucketPositionUs <= bucketPresetTargetUs) {
+      bucketPositionUs = bucketPresetTargetUs;
+    }
+  }
+  else {
+
+    bucketPresetActive = false;
+    return;
+  }
+
+  writeBucketMicroseconds(
+    bucketPositionUs
+  );
+
+  bucketLastMovedAt = now;
+  bucketPositionDirty = true;
+
+  if (bucketPositionUs == bucketPresetTargetUs) {
+
+    bucketPresetActive = false;
+
+    Serial.printf(
+      "Bucket preset reached: %d us\n",
+      bucketPositionUs
+    );
+  }
 }
 
 
@@ -355,12 +501,9 @@ void controlBucket(int bucketValue, int deadzone)
 // Hydraulic-Style Claw Control
 // ======================================================
 //
-// R1 = OPEN
-// L1 = CLOSE
-//
-// Hold button = move.
-// Release button = hold current position.
-// Both buttons pressed = no movement.
+// Existing claw movement function.
+// Controller mapping will be moved to R2/L2 after
+// the bucket preset system is fully tested.
 //
 
 void controlClaw(bool openClaw, bool closeClaw)
@@ -373,13 +516,9 @@ void controlClaw(bool openClaw, bool closeClaw)
   constexpr int CLAW_STEP_US = 20;
 
   if (openClaw) {
-
-    // R1 = OPEN
     clawPositionUs += CLAW_STEP_US;
   }
   else {
-
-    // L1 = CLOSE
     clawPositionUs -= CLAW_STEP_US;
   }
 

@@ -12,23 +12,21 @@ void setupAuxLights();
 void moveTank(int leftCommand, int rightCommand);
 void controlArm(int armValue, int deadzone);
 void stopArm();
-
 void processController();
 void setDriveModeLED();
 const char* getDriveModeName();
-
 void setupBucketPWM();
 void setupClawPWM();
-
 void controlBucket(int bucketValue, int deadzone);
 void controlClaw(bool openClaw, bool closeClaw);
-
 void loadBucketPosition();
 void updateBucketPositionMemory();
-
 void loadClawPosition();
 void updateClawPositionMemory();
-
+void startBucketScoopPreset();
+void startBucketDumpPreset();
+void updateBucketPreset();
+void cancelBucketPreset();
 Preferences preferences;
 
 

@@ -649,48 +649,76 @@ driveMixer3(
 
   controlArm(arm, DEADZONE);
 // ======================================================
+// ======================================================
 // Bucket Control
-// Right stick X = curl / dump
+// Right stick X = manual curl / dump
+//
+// Manual bucket input immediately cancels
+// any active automatic bucket preset.
 // ======================================================
 
 int bucketValue = myController->axisRX();
 
-controlBucket(
-  bucketValue,
-  DEADZONE
-);
+if (abs(bucketValue) > DEADZONE) {
+
+  // Operator takes immediate manual control.
+  cancelBucketPreset();
+
+  controlBucket(
+    bucketValue,
+    DEADZONE
+  );
+}
+else {
+
+  // No manual input:
+  // allow an active preset to continue moving.
+  updateBucketPreset();
+}
 
 // ======================================================
-// Claw Control
-// R1 = open
-// L1 = close
+// Bucket Preset Controls
+//
+// R1 tap = SCOOP / LEVEL preset
+// L1 tap = DUMP preset
 // ======================================================
 
 uint16_t buttons = myController->buttons();
 
-bool openClaw =
+static bool previousR1 = false;
+static bool previousL1 = false;
+
+bool currentR1 =
   buttons & BUTTON_SHOULDER_R;
 
-bool closeClaw =
+bool currentL1 =
   buttons & BUTTON_SHOULDER_L;
 
-controlClaw(
-  openClaw,
-  closeClaw
-);
-  Serial.printf(
-  "Mode:%-6s Throttle:%6.2f Steering:%6.2f "
-  "Mag:%5.2f Profile:%5.2f "
-  "Left:%4d Right:%4d Arm:%4d\n",
-  getDriveModeName(),
-  throttle,
-  steering,
-  stickMagnitude,
-  profiledMagnitude,
-  leftPWM,
-  rightPWM,
-  arm
-);
 
-  delay(20);
+// R1 pressed once:
+// start automatic SCOOP / LEVEL movement.
+if (currentR1 && !previousR1) {
+
+  startBucketScoopPreset();
+
+  Serial.println(
+    "R1: Scoop preset requested"
+  );
+}
+
+
+// L1 pressed once:
+// start automatic DUMP movement.
+if (currentL1 && !previousL1) {
+
+  startBucketDumpPreset();
+
+  Serial.println(
+    "L1: Dump preset requested"
+  );
+}
+
+
+previousR1 = currentR1;
+previousL1 = currentL1;
 }
