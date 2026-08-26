@@ -2,13 +2,15 @@
 
 PS4 controller conversion and control-system update for the ProfessorBoots MiniSkidi V3 RC skid steer.
 
-This project replaces the original PS3 controller implementation with **Bluepad32** and a **PlayStation 4 controller**, while retaining the original MiniSkidi hardware and expanding the control system with proportional drive, multiple drive modes, safety features, bucket and claw position control, and auxiliary lighting.
+This project replaces the original PS3 controller implementation with **Bluepad32** and a **PlayStation 4 controller**, while retaining the original MiniSkidi hardware and expanding the control system with proportional drive, multiple drive modes, safety features, bucket and claw position control, automatic bucket presets, and auxiliary lighting.
 
 ## Current Stable Version
 
 **v4.3-stable**
 
 This version has completed a full hardware shakedown on the MiniSkidi and is the current known-good recovery point.
+
+The automatic bucket preset and R2/L2 claw-control features are currently being developed and hardware tested on a feature branch before the next stable release.
 
 ## Features
 
@@ -17,9 +19,12 @@ This version has completed a full hardware shakedown on the MiniSkidi and is the
 - Drive Engine 4 steering
 - Work, Drive, and Travel modes
 - Proportional loader arm control
-- Hydraulic-style bucket control
+- Proportional hydraulic-style bucket control
+- Automatic scoop / level bucket preset
+- Automatic dump bucket preset
+- Manual bucket override of automatic presets
 - Bucket position memory across power cycles
-- Hydraulic-style claw control
+- Smooth R2/L2 claw control
 - Claw position memory across power cycles
 - Auxiliary light control
 - Controller connection rumble
@@ -35,9 +40,11 @@ This version has completed a full hardware shakedown on the MiniSkidi and is the
 | Left Stick Up / Down | Drive forward / reverse |
 | Left Stick Left / Right | Steering / pivot |
 | Right Stick Up / Down | Loader arm up / down |
-| Right Stick Left / Right | Bucket curl / dump |
-| R1 | Open claw |
-| L1 | Close claw |
+| Right Stick Left / Right | Manual proportional bucket curl / dump |
+| R1 | Bucket scoop / level preset |
+| L1 | Bucket dump preset |
+| R2 | Open claw |
+| L2 | Close claw |
 | R3 | Toggle auxiliary lights |
 | D-pad Up | Travel mode |
 | D-pad Right | Drive mode |
@@ -95,26 +102,55 @@ If the controller disconnects, the drive tracks and loader arm are commanded to 
 
 ## Bucket Control
 
-The bucket is controlled with the **right stick left/right axis**.
+The bucket can be operated manually with the **right stick left/right axis** or automatically using the R1/L1 bucket presets.
 
-The stick controls the rate of bucket movement:
+### Manual Bucket Control
+
+The right stick provides proportional hydraulic-style control:
 
 - Small stick movement = slow bucket movement
 - Large stick movement = faster bucket movement
 - Centered stick = hold current position
 
-The calibrated bucket position is retained in ESP32 nonvolatile memory and restored after a power cycle.
+Bucket movement uses a fixed 20 ms update interval so movement speed remains consistent regardless of ESP32 main-loop speed.
+
+Manual right-stick bucket input immediately cancels an active automatic preset and returns control to the operator.
+
+### Bucket Presets
+
+Two calibrated automatic bucket positions are available:
+
+- **R1:** Scoop / level position - 2000 us
+- **L1:** Dump position - 700 us
+
+Tapping R1 or L1 smoothly moves the bucket to the selected position.
+
+Preset movement uses a fixed 20 ms update interval and a tested 15 us movement step for smooth operation.
+
+## Bucket Position Memory
+
+The bucket position is retained in ESP32 nonvolatile memory.
+
+After bucket movement stops, the current position is saved. This allows the firmware to retain the calibrated bucket position across power cycles.
 
 ## Claw Control
 
-The claw uses the PS4 shoulder buttons:
+The claw is controlled with the PS4 analog triggers:
 
-- **R1:** Open claw
-- **L1:** Close claw
+- **R2:** Open claw
+- **L2:** Close claw
 
-Holding a button moves the claw. Releasing the button holds the current position.
+Holding a trigger moves the claw. Releasing the trigger holds the current position.
 
-The calibrated claw position is retained in ESP32 nonvolatile memory and restored after a power cycle.
+If R2 and L2 are pressed together, the claw does not move.
+
+Claw movement uses a fixed 20 ms update interval so movement speed remains consistent regardless of ESP32 main-loop speed.
+
+## Claw Position Memory
+
+The claw position is retained in ESP32 nonvolatile memory.
+
+After claw movement stops, the current position is saved so the firmware can retain the calibrated claw position across power cycles.
 
 ## Auxiliary Lights
 
@@ -172,7 +208,7 @@ Important files include:
 - `Config.h` - hardware pins and tuning constants
 - `Controller.ino` - PS4 mapping, drive modes, and drive mixer
 - `Drive.ino` - track and loader arm motor output
-- `Servo.ino` - bucket and claw control and position memory
+- `Servo.ino` - bucket and claw control, automatic bucket presets, servo timing, and position memory
 
 Additional project documentation is available in the `Docs/` directory.
 

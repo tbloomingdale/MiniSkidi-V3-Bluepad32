@@ -649,7 +649,6 @@ driveMixer3(
 
   controlArm(arm, DEADZONE);
 // ======================================================
-// ======================================================
 // Bucket Control
 // Right stick X = manual curl / dump
 //
