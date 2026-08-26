@@ -6,11 +6,9 @@ This project replaces the original PS3 controller implementation with **Bluepad3
 
 ## Current Stable Version
 
-**v4.3-stable**
+**v4.4-stable**
 
 This version has completed a full hardware shakedown on the MiniSkidi and is the current known-good recovery point.
-
-The automatic bucket preset and R2/L2 claw-control features are currently being developed and hardware tested on a feature branch before the next stable release.
 
 ## Features
 
@@ -220,7 +218,7 @@ Known-good development checkpoints are preserved with Git tags.
 
 Current full-machine stable checkpoint:
 
-`v4.3-stable`
+`v4.4-stable`
 
 New features should be developed on separate feature branches and tested on the machine before being merged into `main`.
 
